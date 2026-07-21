@@ -1,11 +1,17 @@
 import { IncomingMessage, ServerResponse } from 'http';
 import { URL } from 'url';
-import { obtenerProductos, obtenerProductoPorId, crearProducto, actualizarProducto, eliminarProducto } from '../controllers/productosControllers';
+import { 
+    obtenerProductos, 
+    obtenerProductoPorId, 
+    crearProducto, 
+    actualizarProducto, 
+    eliminarProducto 
+} from '../controllers/productosControllers';
 
 export const manejarRutasProductos = (req: IncomingMessage, res: ServerResponse, parsedUrl: URL): void => {
     const method = req.method;
     const pathname = parsedUrl.pathname;
-    const partes = pathname.split('/').filter(Boolean);
+    const partes = pathname.split('/').filter(Boolean); 
 
     if (method === 'GET' && partes.length === 1) {
         obtenerProductos(req, res);
@@ -19,6 +25,10 @@ export const manejarRutasProductos = (req: IncomingMessage, res: ServerResponse,
         eliminarProducto(req, res, partes[1]);
     } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Ruta no encontrada' }));
+        res.end(JSON.stringify({ 
+            error: true, 
+            codigo: 404, 
+            mensaje: 'Ruta o método HTTP no válido en /productos' 
+        }));
     }
 };
