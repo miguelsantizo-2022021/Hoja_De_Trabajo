@@ -1,6 +1,12 @@
 import { IncomingMessage, ServerResponse } from 'http';
 import { URL } from 'url';
-import { obtenerClientes, obtenerClientePorId, crearCliente, actualizarCliente, eliminarCliente } from '../controllers/clienteControllers';
+import { 
+    obtenerClientes, 
+    obtenerClientePorId, 
+    crearCliente, 
+    actualizarCliente, 
+    eliminarCliente 
+} from '../controllers/clienteControllers';
 
 export const manejarRutasClientes = (req: IncomingMessage, res: ServerResponse, parsedUrl: URL): void => {
     const method = req.method;
@@ -10,15 +16,18 @@ export const manejarRutasClientes = (req: IncomingMessage, res: ServerResponse, 
     if (method === 'GET' && partes.length === 1) {
         obtenerClientes(req, res);
     } else if (method === 'GET' && partes.length === 2) {
-        obtenerClientePorId(req, res, partes[1]);
+        const id = partes[1];
+        obtenerClientePorId(req, res, id);
     } else if (method === 'POST' && partes.length === 1) {
         crearCliente(req, res);
     } else if (method === 'PUT' && partes.length === 2) {
-        actualizarCliente(req, res, partes[1]);
+        const id = partes[1];
+        actualizarCliente(req, res, id);
     } else if (method === 'DELETE' && partes.length === 2) {
-        eliminarCliente(req, res, partes[1]);
+        const id = partes[1];
+        eliminarCliente(req, res, id);
     } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Ruta no encontrada' }));
+        res.end(JSON.stringify({ error: 'Ruta o método HTTP no válido en /clientes' }));
     }
 };
