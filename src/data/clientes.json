@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "c001",
+    "nombre": "Carlos",
+    "apellido": "Pérez",
+    "correo": "carlos.perez@email.com",
+    "telefono": "5555-1234",
+    "direccion": "Zona 1, Ciudad de Guatemala",
+    "estado": true
+  }
+]
