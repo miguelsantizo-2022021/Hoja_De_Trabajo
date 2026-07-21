@@ -1,107 +1,69 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { IncomingMessage, ServerResponse } from 'http';
+import { productoService } from '../service/productoService';
 import { Producto } from '../models/producto';
-
-const filePath = path.join(__dirname, '../data/productos.json');
 
 export const obtenerProductos = (req: IncomingMessage, res: ServerResponse): void => {
     try {
-        if (!fs.existsSync(filePath)) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify([]));
-            return;
-        }
-        const data = fs.readFileSync(filePath, 'utf-8');
+        const productos = productoService.obtenerTodos();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(data);
+        res.end(JSON.stringify(productos));
     } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al obtener los productos' }));
     }
 };
 
 export const obtenerProductoPorId = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     try {
-        if (!fs.existsSync(filePath)) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Producto no encontrado' }));
-            return;
-        }
-        const data: Producto[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const producto = data.find((p: Producto) => p.id === id);
-
+        const producto = productoService.obtenerPorId(id);
         if (!producto) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Producto no encontrado' }));
             return;
         }
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(producto));
     } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al buscar el producto' }));
     }
 };
 
 export const crearProducto = (req: IncomingMessage, res: ServerResponse): void => {
     let body = '';
-    req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
-    });
-
+    req.on('data', chunk => body += chunk.toString());
     req.on('end', () => {
         try {
             const nuevoProducto: Producto = JSON.parse(body);
-            let productos: Producto[] = [];
-
-            if (fs.existsSync(filePath)) {
-                productos = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            if (!nuevoProducto.id || !nuevoProducto.nombre) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan campos obligatorios (id, nombre)' }));
+                return;
             }
-
-            productos.push(nuevoProducto);
-            fs.writeFileSync(filePath, JSON.stringify(productos, null, 2));
-
+            const productoCreado = productoService.crear(nuevoProducto);
             res.writeHead(201, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(nuevoProducto));
+            res.end(JSON.stringify(productoCreado));
         } catch (error) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Datos inválidos' }));
+            res.end(JSON.stringify({ error: 'JSON malformado' }));
         }
     });
 };
 
 export const actualizarProducto = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     let body = '';
-    req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
-    });
-
+    req.on('data', chunk => body += chunk.toString());
     req.on('end', () => {
         try {
-            if (!fs.existsSync(filePath)) {
+            const datos = JSON.parse(body);
+            const productoActualizado = productoService.actualizar(id, datos);
+            if (!productoActualizado) {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Producto no encontrado' }));
+                res.end(JSON.stringify({ error: 'Producto no encontrado para actualizar' }));
                 return;
             }
-
-            let productos: Producto[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-            const index = productos.findIndex((p: Producto) => p.id === id);
-
-            if (index === -1) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Producto no encontrado' }));
-                return;
-            }
-
-            const datosActualizados = JSON.parse(body);
-            productos[index] = { ...productos[index], ...datosActualizados, id };
-
-            fs.writeFileSync(filePath, JSON.stringify(productos, null, 2));
-
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(productos[index]));
+            res.end(JSON.stringify(productoActualizado));
         } catch (error) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Error al actualizar' }));
@@ -111,27 +73,16 @@ export const actualizarProducto = (req: IncomingMessage, res: ServerResponse, id
 
 export const eliminarProducto = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     try {
-        if (!fs.existsSync(filePath)) {
+        const eliminado = productoService.eliminar(id);
+        if (!eliminado) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Producto no encontrado' }));
+            res.end(JSON.stringify({ error: 'Producto no encontrado para eliminar' }));
             return;
         }
-
-        let productos: Producto[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const nuevosProductos = productos.filter((p: Producto) => p.id !== id);
-
-        if (productos.length === nuevosProductos.length) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Producto no encontrado' }));
-            return;
-        }
-
-        fs.writeFileSync(filePath, JSON.stringify(nuevosProductos, null, 2));
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ mensaje: 'Producto eliminado correctamente' }));
+        res.end(JSON.stringify({ mensaje: 'Producto eliminado exitosamente' }));
     } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al eliminar el producto' }));
     }
 };
