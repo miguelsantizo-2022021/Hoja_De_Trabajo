@@ -12,6 +12,10 @@ export const manejarRutas = (req: IncomingMessage, res: ServerResponse): void =>
         manejarRutasProductos(req, res, parsedUrl);
     } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Ruta general no encontrada' }));
+        res.end(JSON.stringify({ 
+            error: true, 
+            codigo: 404, 
+            mensaje: 'Ruta no encontrada' 
+        }));
     }
 };
