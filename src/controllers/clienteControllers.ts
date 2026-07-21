@@ -1,137 +1,92 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { IncomingMessage, ServerResponse } from 'http';
-import { Cliente } from '../models/cliente';
-
-const filePath = path.join(__dirname, '../data/clientes.json');
+import { clienteService } from '../service/clientesService';
+import { Cliente } from '../service/clientesService';
 
 export const obtenerClientes = (req: IncomingMessage, res: ServerResponse): void => {
     try {
-        if (!fs.existsSync(filePath)) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify([]));
-            return;
-        }
-        const data = fs.readFileSync(filePath, 'utf-8');
+        const clientes = clienteService.obtenerTodos();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(data);
-    } catch (error) {
+        res.end(JSON.stringify(clientes));
+    } catch {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al obtener los clientes' }));
     }
 };
 
 export const obtenerClientePorId = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     try {
-        if (!fs.existsSync(filePath)) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
-            return;
-        }
-        const data: Cliente[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const cliente = data.find((c: Cliente) => c.id === id);
-
+        const cliente = clienteService.obtenerPorId(id);
         if (!cliente) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
             return;
         }
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(cliente));
-    } catch (error) {
+    } catch {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al buscar el cliente' }));
     }
 };
 
 export const crearCliente = (req: IncomingMessage, res: ServerResponse): void => {
     let body = '';
-    req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
-    });
-
+    req.on('data', chunk => body += chunk.toString());
     req.on('end', () => {
         try {
             const nuevoCliente: Cliente = JSON.parse(body);
-            let clientes: Cliente[] = [];
+            const resultado = clienteService.crear(nuevoCliente);
 
-            if (fs.existsSync(filePath)) {
-                clientes = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            if (!resultado.exito) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: resultado.mensaje }));
+                return;
             }
 
-            clientes.push(nuevoCliente);
-            fs.writeFileSync(filePath, JSON.stringify(clientes, null, 2));
-
             res.writeHead(201, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(nuevoCliente));
-        } catch (error) {
+            res.end(JSON.stringify(resultado.cliente));
+        } catch {
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Datos inválidos' }));
+            res.end(JSON.stringify({ error: 'JSON malformado' }));
         }
     });
 };
 
 export const actualizarCliente = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     let body = '';
-    req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
-    });
-
+    req.on('data', chunk => body += chunk.toString());
     req.on('end', () => {
         try {
-            if (!fs.existsSync(filePath)) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
+            const datos = JSON.parse(body);
+            const resultado = clienteService.actualizar(id, datos);
+
+            if (!resultado.exito) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: resultado.mensaje }));
                 return;
             }
-
-            let clientes: Cliente[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-            const index = clientes.findIndex((c: Cliente) => c.id === id);
-
-            if (index === -1) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
-                return;
-            }
-
-            const datosActualizados = JSON.parse(body);
-            clientes[index] = { ...clientes[index], ...datosActualizados, id };
-
-            fs.writeFileSync(filePath, JSON.stringify(clientes, null, 2));
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(clientes[index]));
-        } catch (error) {
+            res.end(JSON.stringify(resultado.cliente));
+        } catch {
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Error al actualizar' }));
+            res.end(JSON.stringify({ error: 'Error al actualizar el cliente' }));
         }
     });
 };
 
 export const eliminarCliente = (req: IncomingMessage, res: ServerResponse, id: string): void => {
     try {
-        if (!fs.existsSync(filePath)) {
+        const eliminado = clienteService.eliminar(id);
+        if (!eliminado) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
+            res.end(JSON.stringify({ error: 'Cliente no encontrado para eliminar' }));
             return;
         }
-
-        let clientes: Cliente[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        const nuevosClientes = clientes.filter((c: Cliente) => c.id !== id);
-
-        if (clientes.length === nuevosClientes.length) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Cliente no encontrado' }));
-            return;
-        }
-
-        fs.writeFileSync(filePath, JSON.stringify(nuevosClientes, null, 2));
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ mensaje: 'Cliente eliminado correctamente' }));
-    } catch (error) {
+        res.end(JSON.stringify({ mensaje: 'Cliente eliminado exitosamente' }));
+    } catch {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+        res.end(JSON.stringify({ error: 'Error al eliminar el cliente' }));
     }
 };
