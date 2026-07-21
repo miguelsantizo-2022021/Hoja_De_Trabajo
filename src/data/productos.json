@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "p001",
+    "nombre": "Teclado Mecánico",
+    "descripcion": "Teclado RGB Switch Red",
+    "precio": 45.99,
+    "stock": 15,
+    "categoria": "Periféricos",
+    "estado": true
+  }
+]
